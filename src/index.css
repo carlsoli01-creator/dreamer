@@ -5,33 +5,100 @@
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: #07080a;
-  color: #e8eaee;
-  font-family: 'Inter', system-ui, sans-serif;
+  background: #040810;
+  color: #aaccdd;
+  font-family: 'Share Tech Mono', 'VT323', monospace;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   user-select: none;
+  cursor: crosshair;
 }
 
-/* subtle scanline overlay (set via class on App root) */
-.scanlines::after {
+/* CRT scanlines (heavy) */
+.crt::before {
   content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px);
-  pointer-events: none;
-  z-index: 1;
-  mix-blend-mode: overlay;
+  position: fixed; inset: 0; z-index: 60; pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg,
+      rgba(0,0,0,.18) 0 1px,
+      rgba(255,255,255,.02) 1px 2px,
+      transparent 2px 3px);
+  mix-blend-mode: multiply;
 }
 
-.vignette::before {
+/* sweeping bright scanline */
+.crt::after {
   content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%);
-  pointer-events: none;
-  z-index: 1;
+  position: fixed; left: 0; right: 0; height: 80px;
+  z-index: 61; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(0,255,170,.06) 50%, transparent);
+  animation: scan 6s linear infinite;
 }
 
-/* hide r3f canvas focus ring */
+/* RGB split / chromatic aberration on text via global filter (subtle) */
+.aberration {
+  text-shadow:
+     0.5px 0   rgba(255,40,80,.6),
+    -0.5px 0   rgba(80,200,255,.6);
+}
+
+/* phosphor flicker */
+.flicker { animation: flicker 4s infinite; }
+
+/* corner brackets — utility class */
+.brackets {
+  position: relative;
+}
+.brackets::before, .brackets::after {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  border: 2px solid currentColor;
+}
+.brackets::before { top: -2px; left: -2px;  border-right: 0; border-bottom: 0; }
+.brackets::after  { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+
+/* ascii bar component */
+.bar { display: inline-block; letter-spacing: 0; font-family: 'VT323', monospace; }
+
+/* heavy vignette */
+.vignette {
+  position: fixed; inset: 0; z-index: 50; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.85) 110%);
+}
+
+/* terminal text glow */
+.glow { text-shadow: 0 0 8px currentColor, 0 0 18px rgba(0,255,170,.3); }
+
+/* boot animation */
+.boot { animation: boot .6s ease-out; }
+
 canvas { outline: none; }
+
+/* utility: data divider */
+.hr-2k {
+  position: relative;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+  opacity: .35;
+}
+
+/* button reset */
+button { font-family: inherit; cursor: pointer; }
+
+/* pixel ASCII bar helper, e.g. ▮▮▮▮▯▯▯▯ */
+.ascii-bar {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+/* radar sweep */
+.radar-sweep {
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(from 0deg, transparent 270deg, rgba(0,255,170,.4) 358deg, transparent 360deg);
+  animation: sweep 5s linear infinite;
+  pointer-events: none;
+}
