@@ -1,39 +1,36 @@
-import { useEffect, useState } from 'react';
-import { NOISLESS_MAPS } from './data/maps';
-import MapScene from './scene/MapScene';
-import MapSelector from './ui/MapSelector';
-import InfoPanel from './ui/InfoPanel';
-import Legend from './ui/Legend';
-import ControlsHint from './ui/ControlsHint';
-import Header from './ui/Header';
-import HUD from './ui/HUD';
-import { NPCStateView } from './scene/Agents';
+import { GameProvider, useGame } from './store';
+import Menu from './ui/Menu';
+import AvatarSelect from './ui/AvatarSelect';
+import MapSelect from './ui/MapSelect';
+import Loading from './ui/Loading';
+import Settings from './ui/Settings';
+import Controls from './ui/Controls';
+import EndScreen from './ui/EndScreen';
+import PlayLayer from './ui/PlayLayer';
 
 export default function App() {
-  const [mapId, setMapId] = useState<string>('dead_signal');
-  const [state, setState] = useState<NPCStateView | null>(null);
-  const map = NOISLESS_MAPS[mapId];
-
-  const [ready, setReady] = useState(false);
-  useEffect(() => { setReady(false); const t = setTimeout(() => setReady(true), 250); return () => clearTimeout(t); }, [mapId]);
-
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-bg crt">
-      <div className="absolute inset-0">
-        <MapScene key={mapId} map={map} onState={setState} />
-      </div>
-      <div className="vignette" />
+    <GameProvider>
+      <Shell />
+    </GameProvider>
+  );
+}
 
-      <Header />
-      {ready && (
-        <div className="boot">
-          <MapSelector selected={mapId} onSelect={setMapId} />
-          <InfoPanel map={map} />
-          <ControlsHint />
-          <Legend />
-          <HUD state={state} />
-        </div>
-      )}
+function Shell() {
+  const g = useGame();
+  return (
+    <div className="relative w-screen h-screen overflow-hidden bg-bg">
+      {/* Menus / screens */}
+      {g.screen === 'menu'      && <Menu />}
+      {g.screen === 'avatar'    && <AvatarSelect />}
+      {g.screen === 'mapSelect' && <MapSelect />}
+      {g.screen === 'loading'   && <Loading />}
+      {g.screen === 'settings'  && <Settings />}
+      {g.screen === 'controls'  && <Controls />}
+      {g.screen === 'ended'     && <EndScreen />}
+
+      {/* Game layer always-mounted while playing or paused */}
+      {(g.screen === 'playing' || g.screen === 'paused') && <PlayLayer key={g.matchId} />}
     </div>
   );
 }
