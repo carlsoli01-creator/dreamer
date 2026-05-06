@@ -81,3 +81,19 @@ export function clampToBounds(pos: { x: number; z: number }, map: MapData, r: nu
   pos.x = Math.max(r + 2, Math.min(map.size.width - r - 2, pos.x));
   pos.z = Math.max(r + 2, Math.min(map.size.depth - r - 2, pos.z));
 }
+
+// Snap an arbitrary spawn coordinate outwards until it's clear of all obstacles.
+// Used at match init so player + AI never start inside a building footprint.
+export function snapToOpen(x: number, z: number, r: number, obstacles: AABB[]) {
+  if (!collides(x, z, r, obstacles)) return { x, z };
+  // concentric ring search
+  for (let radius = 1; radius <= 40; radius += 0.75) {
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const tx = x + Math.cos(a) * radius;
+      const tz = z + Math.sin(a) * radius;
+      if (!collides(tx, tz, r, obstacles)) return { x: tx, z: tz };
+    }
+  }
+  return { x, z };
+}

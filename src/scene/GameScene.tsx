@@ -16,7 +16,7 @@ import PlayerAvatar from './PlayerAvatar';
 import SoundRings from './SoundRings';
 import { Player, FootstepEvent } from '../game/Player';
 import { AI } from '../game/AI';
-import { buildObstacles, segmentBlocked } from '../game/physics';
+import { buildObstacles, segmentBlocked, snapToOpen } from '../game/physics';
 
 export interface RuntimeStateView {
   remaining: number;
@@ -71,21 +71,26 @@ function SceneInner({ map, role, avatarId, settings, paused, onState, onEnd }:
   const silenceTraps = useRef<{x:number;z:number;r:number; until:number}[]>([]);
   const decoys = useRef<{x:number;z:number; until:number; nextStep:number}[]>([]);
 
-  // Build player + AI
+  // Build player + AI — snap both spawns out of any building footprint.
   const player = useMemo(() => {
-    const sp = role === 'prey' ? map.spawnPoints.prey : map.spawnPoints.hunter;
+    const raw = role === 'prey' ? map.spawnPoints.prey : map.spawnPoints.hunter;
+    const sp = snapToOpen(raw.x, raw.z, 0.5, obstacles);
     const p = new Player(role, sp);
     if (avatar.id === 'p_runner')  { p.speedMul = 1.06; }
     if (avatar.id === 'p_phantom') { p.silentBoost = 2; p.loudnessMul = 0.8; }
     if (avatar.id === 'h_stalker') { p.chaseMul = 1.15; p.speedMul = 1.05; }
     if (avatar.id === 'h_warden')  { p.hearingMul = 1.25; }
     return p;
-  }, [map.id, role, avatarId]);
+  }, [map.id, role, avatarId, obstacles]);
 
   const ai = useMemo(() => {
     const oppRole = role === 'prey' ? 'hunter' : 'prey';
-    return new AI(oppRole, map, settings.botSkill);
-  }, [map.id, role, settings.botSkill]);
+    const a = new AI(oppRole, map, settings.botSkill);
+    const raw = oppRole === 'hunter' ? map.spawnPoints.hunter : map.spawnPoints.prey;
+    const sp = snapToOpen(raw.x, raw.z, 0.5, obstacles);
+    a.pos.set(sp.x, 0, sp.z);
+    return a;
+  }, [map.id, role, settings.botSkill, obstacles]);
 
   // Input state
   const input = useRef({
@@ -360,46 +365,38 @@ function SceneInner({ map, role, avatarId, settings, paused, onState, onEnd }:
 
   return (
     <>
-      {/* Ground */}
-      <mesh rotation={[-Math.PI/2,0,0]} position={[map.size.width/2 - centerOffset[0], -0.01, map.size.depth/2 - centerOffset[1]]} receiveShadow>
+      {/* Ground — centered on the map (raw world coords, NO offset group) */}
+      <mesh rotation={[-Math.PI/2,0,0]} position={[map.size.width/2, -0.01, map.size.depth/2]} receiveShadow>
         <planeGeometry args={[map.size.width * 4, map.size.depth * 4]} />
         <meshStandardMaterial color={map.palette.ground} roughness={0.95} metalness={0.04} />
       </mesh>
 
-      {/* Map static geometry — render in world coordinates (no centerOffset shift; we'll move scene origin) */}
-      <group position={[-centerOffset[0], 0, -centerOffset[1]]}>
-        <Boundary map={map} centerOffset={[0, 0]} />
-        {map.outdoorZones.map((z, i) => <OutdoorZone key={`z-${i}`} zone={z} centerOffset={[0,0]} map={map} />)}
-        {map.buildings.map(b => <Building key={b.id} building={b} centerOffset={[0,0]} map={map} />)}
-        <SpawnMarkers spawns={map.spawnPoints} centerOffset={[0,0]} />
-        {map.extractionZones.map((e, i) => <ExtractionMarker key={`e-${i}`} zone={e} centerOffset={[0,0]} />)}
-        {map.soundTraps?.map((t, i) => <SoundTrapMarker key={`t-${i}`} trap={t} centerOffset={[0,0]} />)}
+      {/* Everything else lives in raw world coordinates, matching player.pos + camera */}
+      <Boundary map={map} centerOffset={[0, 0]} />
+      {map.outdoorZones.map((z, i) => <OutdoorZone key={`z-${i}`} zone={z} centerOffset={[0,0]} map={map} />)}
+      {map.buildings.map(b => <Building key={b.id} building={b} centerOffset={[0,0]} map={map} />)}
+      <SpawnMarkers spawns={map.spawnPoints} centerOffset={[0,0]} />
+      {map.extractionZones.map((e, i) => <ExtractionMarker key={`e-${i}`} zone={e} centerOffset={[0,0]} />)}
+      {map.soundTraps?.map((t, i) => <SoundTrapMarker key={`t-${i}`} trap={t} centerOffset={[0,0]} />)}
 
-        {/* Player avatar (3rd person only renders body) */}
-        <group ref={playerMesh}>
-          <PlayerAvatar avatar={avatar} faded={false} />
-        </group>
-
-        {/* AI opponent */}
-        <group ref={aiMesh}>
-          <PlayerAvatar avatar={oppositeAvatar(avatar)} />
-        </group>
-
-        {/* AI hunter vision cone (only when AI is hunter) */}
-        {ai.role === 'hunter' && (
-          <mesh ref={visionConeRef} rotation={[-Math.PI/2, 0, 0]}>
-            <ringGeometry args={[0.5, 18, 32, 1, -0.55, 1.1]} />
-            <meshBasicMaterial color="#66ccff" transparent opacity={0.16} side={THREE.DoubleSide} depthWrite={false} />
-          </mesh>
-        )}
-
-        {/* Decoys + silence traps visualization */}
-        <Decoys list={decoys} />
-        <SilenceTraps list={silenceTraps} />
-
-        {/* Sound rings */}
-        <SoundRings footstepsRef={footsteps} />
+      <group ref={playerMesh}>
+        <PlayerAvatar avatar={avatar} faded={false} />
       </group>
+
+      <group ref={aiMesh}>
+        <PlayerAvatar avatar={oppositeAvatar(avatar)} />
+      </group>
+
+      {ai.role === 'hunter' && (
+        <mesh ref={visionConeRef} rotation={[-Math.PI/2, 0, 0]}>
+          <ringGeometry args={[0.5, 18, 32, 1, -0.55, 1.1]} />
+          <meshBasicMaterial color="#66ccff" transparent opacity={0.16} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      )}
+
+      <Decoys list={decoys} />
+      <SilenceTraps list={silenceTraps} />
+      <SoundRings footstepsRef={footsteps} />
 
       {/* Lighting */}
       <ambientLight intensity={isSnow ? 0.55 : 0.4} color={isSnow ? '#9eaab9' : '#1a2030'} />

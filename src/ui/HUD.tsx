@@ -123,32 +123,63 @@ function fmt(seconds: number) {
 function Minimap({ state }: { state: RuntimeStateView | null }) {
   const g = useGame();
   const m = NOISLESS_MAPS[g.mapId];
-  const W = 180, H = 130;
-  const sx = W / m.size.width, sz = H / m.size.depth;
-  const px = state ? state.preyPos.x * sx : 0;
-  const py = state ? state.preyPos.z * sz : 0;
-  const hx = state ? state.hunterPos.x * sx : 0;
-  const hy = state ? state.hunterPos.z * sz : 0;
+  // square radar — uniform scale so geometry isn't distorted
+  const SIZE = 170;
+  const mapDim = Math.max(m.size.width, m.size.depth);
+  const s = SIZE / mapDim;
+  // center the map inside the radar
+  const ox = (SIZE - m.size.width  * s) / 2;
+  const oy = (SIZE - m.size.depth  * s) / 2;
+  const tx = (x: number) => ox + x * s;
+  const ty = (z: number) => oy + z * s;
+
+  const px = state ? tx(state.preyPos.x)   : 0;
+  const py = state ? ty(state.preyPos.z)   : 0;
+  const hx = state ? tx(state.hunterPos.x) : 0;
+  const hy = state ? ty(state.hunterPos.z) : 0;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block" style={{ background: '#040810' }}>
-      <rect x="0.5" y="0.5" width={W-1} height={H-1} fill="none" stroke="#00ffaa" strokeWidth="0.4" opacity="0.4" />
+    <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={SIZE} height={SIZE} className="block" style={{ background: '#040810' }}>
+      {/* boundary */}
+      <rect x={ox} y={oy} width={m.size.width * s} height={m.size.depth * s}
+            fill="none" stroke="#00ffaa" strokeWidth="0.5" opacity="0.5" />
+
+      {/* outdoor zones */}
+      {m.outdoorZones.map((z, i) => (
+        <rect key={`z-${i}`}
+              x={tx(z.position.x - z.size.width/2)}
+              y={ty(z.position.z - z.size.depth/2)}
+              width={z.size.width * s} height={z.size.depth * s}
+              fill="#fff" opacity="0.05" />
+      ))}
+
+      {/* buildings */}
       {m.buildings.map((b, i) => (
-        <rect key={i}
-              x={(b.position.x - b.dimensions.width/2) * sx}
-              y={(b.position.z - b.dimensions.depth/2) * sz}
-              width={b.dimensions.width * sx} height={b.dimensions.depth * sz}
-              fill="#1a2638" stroke="#3a4a60" strokeWidth="0.3" />
+        <rect key={`b-${i}`}
+              x={tx(b.position.x - b.dimensions.width/2)}
+              y={ty(b.position.z - b.dimensions.depth/2)}
+              width={b.dimensions.width * s} height={b.dimensions.depth * s}
+              fill="#1a2638" stroke="#3a4a60" strokeWidth="0.4" />
       ))}
+
+      {/* extraction zones */}
       {m.extractionZones.map((e, i) => (
-        <circle key={i} cx={e.position.x * sx} cy={e.position.z * sz} r={e.radius * sx * 0.9}
-                fill={e.type === 'primary' ? '#00ffaa' : '#ff9933'} opacity="0.45" />
+        <g key={`e-${i}`}>
+          <circle cx={tx(e.position.x)} cy={ty(e.position.z)} r={e.radius * s}
+                  fill={e.type === 'primary' ? '#00ffaa' : '#ff9933'} opacity="0.4" />
+          <circle cx={tx(e.position.x)} cy={ty(e.position.z)} r={1.6}
+                  fill={e.type === 'primary' ? '#00ffaa' : '#ff9933'} />
+        </g>
       ))}
-      <circle cx={hx} cy={hy} r={3} fill="#66ccff" />
-      <circle cx={px} cy={py} r={3} fill="#ff2244" />
+
+      {/* live agents */}
+      <circle cx={hx} cy={hy} r={3.4} fill="#66ccff" stroke="#fff" strokeWidth="0.5" />
+      <circle cx={px} cy={py} r={3.4} fill="#ff2244" stroke="#fff" strokeWidth="0.5" />
+
+      {/* scanlines */}
       <g opacity="0.18">
-        {Array.from({ length: 32 }).map((_, i) => (
-          <line key={i} x1="0" x2={W} y1={i*4} y2={i*4} stroke="#000" />
+        {Array.from({ length: SIZE / 4 }).map((_, i) => (
+          <line key={i} x1="0" x2={SIZE} y1={i*4} y2={i*4} stroke="#000" />
         ))}
       </g>
     </svg>

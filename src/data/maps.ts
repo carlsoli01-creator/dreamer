@@ -239,8 +239,9 @@ export const NOISLESS_MAPS: Record<string, MapData> = {
     ],
 
     spawnPoints: {
-      prey: { x: 25, z: 25, facing: 'east' },
-      hunter: { x: 78, z: 78, facing: 'west' },
+      // moved off main_tower footprint (was inside 22..48 × 19..41)
+      prey: { x: 8, z: 14, facing: 'east' },
+      hunter: { x: 88, z: 90, facing: 'west' },
     },
 
     extractionZones: [
@@ -425,8 +426,9 @@ export const NOISLESS_MAPS: Record<string, MapData> = {
     ],
 
     spawnPoints: {
-      prey: { x: 30, z: 30, facing: 'northeast' },
-      hunter: { x: 95, z: 95, facing: 'southwest' },
+      prey: { x: 18, z: 18, facing: 'northeast' },
+      // moved off generator_shed (95±4 × 90±5)
+      hunter: { x: 100, z: 100, facing: 'southwest' },
     },
 
     extractionZones: [
@@ -626,8 +628,9 @@ export const NOISLESS_MAPS: Record<string, MapData> = {
     ],
 
     spawnPoints: {
-      prey: { x: 22, z: 22, facing: 'east' },
-      hunter: { x: 65, z: 65, facing: 'west' },
+      prey: { x: 10, z: 50, facing: 'east' },
+      // moved off helipad_structure (62±7.5 × 62±7.5)
+      hunter: { x: 72, z: 72, facing: 'west' },
     },
 
     extractionZones: [

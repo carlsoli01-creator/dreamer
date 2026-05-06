@@ -72,42 +72,47 @@ export default function MapSelect() {
 
 function MiniMap({ mapId }: { mapId: string }) {
   const m = NOISLESS_MAPS[mapId];
-  const W = 200, H = 110;
-  const sx = W / m.size.width, sz = H / m.size.depth;
+  // uniform-scale square viewport so geometry isn't distorted
+  const VB = 200;
+  const dim = Math.max(m.size.width, m.size.depth);
+  const s = VB / dim;
+  const ox = (VB - m.size.width * s) / 2;
+  const oy = (VB - m.size.depth * s) / 2;
+  const tx = (x: number) => ox + x * s;
+  const ty = (z: number) => oy + z * s;
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" style={{ background: m.palette.fog }}>
-      {/* boundary */}
-      <rect x="2" y="2" width={W-4} height={H-4} fill="none" stroke={m.palette.accent} strokeWidth="0.6" opacity="0.5" />
-      {/* outdoor zones */}
+    <svg viewBox={`0 0 ${VB} ${VB}`} preserveAspectRatio="xMidYMid meet" className="w-full h-full" style={{ background: m.palette.fog }}>
+      <rect x={ox} y={oy} width={m.size.width * s} height={m.size.depth * s}
+            fill="none" stroke={m.palette.accent} strokeWidth="0.7" opacity="0.5" />
       {m.outdoorZones.map((z, i) => (
-        <rect key={i} x={(z.position.x - z.size.width/2) * sx} y={(z.position.z - z.size.depth/2) * sz}
-              width={z.size.width * sx} height={z.size.depth * sz} fill="#fff" opacity="0.06" />
+        <rect key={i}
+              x={tx(z.position.x - z.size.width/2)}
+              y={ty(z.position.z - z.size.depth/2)}
+              width={z.size.width * s} height={z.size.depth * s}
+              fill="#fff" opacity="0.06" />
       ))}
-      {/* buildings */}
       {m.buildings.map((b, i) => (
         <rect key={i}
-              x={(b.position.x - b.dimensions.width/2) * sx}
-              y={(b.position.z - b.dimensions.depth/2) * sz}
-              width={b.dimensions.width * sx}
-              height={b.dimensions.depth * sz}
+              x={tx(b.position.x - b.dimensions.width/2)}
+              y={ty(b.position.z - b.dimensions.depth/2)}
+              width={b.dimensions.width * s}
+              height={b.dimensions.depth * s}
               fill={m.palette.wall} stroke={m.palette.accent} strokeWidth="0.4" opacity="0.85" />
       ))}
-      {/* extractions */}
       {m.extractionZones.map((e, i) => (
         <g key={i}>
-          <circle cx={e.position.x * sx} cy={e.position.z * sz} r={e.radius * sx * 0.9}
-                  fill={e.type === 'primary' ? '#00ffaa' : '#ff9933'} opacity="0.6" />
-          <circle cx={e.position.x * sx} cy={e.position.z * sz} r={1.6}
+          <circle cx={tx(e.position.x)} cy={ty(e.position.z)} r={e.radius * s}
+                  fill={e.type === 'primary' ? '#00ffaa' : '#ff9933'} opacity="0.55" />
+          <circle cx={tx(e.position.x)} cy={ty(e.position.z)} r={1.8}
                   fill={e.type === 'primary' ? '#00ffaa' : '#ff9933'} />
         </g>
       ))}
-      {/* spawns */}
-      <circle cx={m.spawnPoints.prey.x * sx} cy={m.spawnPoints.prey.z * sz} r={2} fill="#ff2244" />
-      <circle cx={m.spawnPoints.hunter.x * sx} cy={m.spawnPoints.hunter.z * sz} r={2} fill="#66ccff" />
-      {/* scanlines */}
+      <circle cx={tx(m.spawnPoints.prey.x)}   cy={ty(m.spawnPoints.prey.z)}   r={2.2} fill="#ff2244" />
+      <circle cx={tx(m.spawnPoints.hunter.x)} cy={ty(m.spawnPoints.hunter.z)} r={2.2} fill="#66ccff" />
       <g opacity="0.18">
-        {Array.from({ length: 30 }).map((_, i) => (
-          <line key={i} x1="0" x2={W} y1={i*4} y2={i*4} stroke="#000" />
+        {Array.from({ length: VB / 4 }).map((_, i) => (
+          <line key={i} x1="0" x2={VB} y1={i*4} y2={i*4} stroke="#000" />
         ))}
       </g>
     </svg>
